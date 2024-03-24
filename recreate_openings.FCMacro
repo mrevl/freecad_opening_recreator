@@ -1,0 +1,162 @@
+# Window/Door recreation macro / python script by MrEvL
+# Take a look at accompanied window_demo.FCst file and read the README.MD
+# on 
+
+import math
+import Draft
+import Arch
+
+def main():
+#    docname = 'window_demo'
+#    doc = FreeCAD.getDocument(docname)
+    doc = FreeCAD.activeDocument()
+
+    # the spreadsheet containing the parameterization of the windows
+    sc = doc.getObjectsByLabel("sc_openings")
+    if not sc:
+        print("No spreadsheet called sc_openings found - bailing")
+        exit(1)
+    sc = sc[0]
+
+    # the group containing all the sketch objects referring to points
+    op = doc.getObjectsByLabel('openings')
+    if not op:
+        print("No group called openings found - bailing")
+        exit(1)
+    op = op[0]
+
+    # the group with generated items
+    gop = doc.getObjectsByLabel('generated_openings')
+    if not gop:
+        print("No group called generated_openings found - bailing")
+        exit(1)
+    gop = gop[0]
+
+    for sketch in op.OutList:
+        win = None
+        win = rebuild_opening(doc, sketch, sc)
+        for x in win:
+            gop.addObject(x)
+
+    App.activeDocument().recompute(None,True,True)
+
+
+def remove_generated(doc, label):
+    # remove the previous window + underlying sketch and regenerate
+    if (doc.getObjectsByLabel('gen_' + label)):
+        prev = doc.getObjectsByLabel('gen_' + label)[0]
+        print(f'Removing:{prev.Label}')
+        if (prev.Base):
+            doc.removeObject(prev.Base.Name)
+            doc.removeObject(prev.Name)
+
+
+def rebuild_opening(doc, sketch, sc):
+    # try to find the host object via the external reference
+    fh = None
+    for h in sketch.ExternalGeometry[0][0].InList:
+        if h.TypeId == 'Part::FeaturePython':
+            print(f'Assuming {h.Name} / {h.Label} for host object')
+            fh = h
+            break
+
+    gen_win = []
+
+    found_named_constraint = False
+    for c in sketch.Constraints:        
+        onr = 0
+        ho = None
+
+        #print(sketch.Name)
+        if c.Name.rstrip() != '' and sc.getCellFromAlias(c.Name):
+            onr = sc.getCellFromAlias(c.Name)[1:] 
+        if onr == 0:
+            continue
+
+        found_named_constraint = True
+        try: 
+            ho = doc.getObjectsByLabel(sc.get('B' + onr))[0]
+        except ValueError as ve:
+            print(f'No explicit host object defined at B{str(onr)}')
+
+        if (ho):
+            print(f'Using host {ho.Label}')
+        elif (fh):
+            print(f'Using host {fh.Label}')
+            ho = fh
+        else:
+            print(f'No host object found - skipping {sketch.Name}')
+            return
+
+        # remove any previously generated windows with this constraint name
+        remove_generated(doc, c.Name)
+
+        g = sketch.Geometry[c.First]
+
+        z = sc.get('C' + onr)        
+
+        # g.EndPoint, g.StartPoint
+        x1,y1,z1 = g.StartPoint
+        x2,y2,z2 = g.EndPoint
+
+        # Determine the angle of the opening by using the start and endpoint of the 
+        # constraint. Think: I want to place an opening in this 'direction'.
+        # This part needs some re-thinking. Part of this might already be in the
+        # window code in FreeCAD, somewhere. I doubt this is a new problem.
+        dx = x2 -x1
+        dy = y2 -y1
+        if dx:
+            angle = math.degrees(math.atan(dy/dx))
+        else:
+            angle = 270
+        # print(str(angle))
+
+        # FIXME - determine what the automatic values actually become
+        # Rotate the opening over the normal (extrusion direction) of the wall. 
+        # Walls have the tendency to have a (0,0,0) / automatic unless specified.
+        # If 0,0,0 it probably reflects back to the base object, which could have been drawn on the
+        # y/z plane for all we know and henceforth extrudes to the x plane. For now, assume we're doing 
+        # x/y plane and rewrite (0,0,0) to (0,0,1), the z plane / "up"
+        n_ax = ho.Normal
+        if (n_ax == (0,0,0)):
+            n_ax = (0,0,1)
+
+        # this is the actual window call
+        preset = sc.get('D' + onr)	
+        width  = sc.get('E' + onr)
+        height = sc.get('F' + onr)
+        h1 = sc.get('G' + onr)
+        h2 = sc.get('H' + onr)
+        h3 = sc.get('I' + onr)
+        w1 = sc.get('J' + onr)
+        w2 = sc.get('K' + onr)
+        o1 = sc.get('L' + onr)
+        o2 = sc.get('M' + onr)
+
+        rot = FreeCAD.Rotation(0, 0, 90) # 90 degrees so it's up, as our sketch (and template!) is "flat" (x/y)
+        pl = FreeCAD.Placement(g.EndPoint, rot)
+
+        #raise the base by z as defined in the spreadsheet for this opening
+        pl.Base = pl.Base + FreeCAD.Vector([0,0,z])
+
+        win = Arch.makeWindowPreset(preset, width=width, height=height, h1=h1, h2=h2, h3=h3, w1=w1, w2=w1, o1=o1, o2=o2, placement=pl)
+
+        # FIXME - preferably there is no post rotation, but it's part of the initial placement.
+        # Rotate the opening over the z axis rotation to align with the wall
+        z_ax = FreeCAD.Vector(0,0,1)  #(x,y,z)
+        Draft.rotate([win], angle, center=pl.Base, axis=z_ax, copy=False)
+
+        win.Hosts = [ho]
+        win.Label = 'gen_' + c.Name
+
+        print(f'Created: {win.Label}')
+        gen_win.append(win)
+   
+
+    if (not found_named_constraint):
+        print(f'No named constraints found to work on in {sketch.Name}')
+
+    return gen_win
+
+
+main()
