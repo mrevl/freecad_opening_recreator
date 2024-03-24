@@ -6,7 +6,7 @@ This macro iterates over sketches in the openings group and then uses the named 
 Host object (e.g. the wall) is automatically determined via the external references. It can also be specified in the spreadsheet, link is via the named constraint.
 The spreadsheet drives things like the template (Fixed window, simple door, whatever your template is named) and all the parameters given; width, heigh, z coordinate, h1,h2 etc - see the sc_openings spreadsheet for details.
 
-Take a look at the window_demo, change the spreadsheet parameters or change the sketch offset and see how the openings move around or change from door to window and so on.
+Take a look at the window_demo, change the spreadsheet parameters or change the constraint distance and see how the openings move around or change from door to window and so on.
 
 Step by Step to implement:
 1) Create a group called openings
