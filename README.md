@@ -15,7 +15,7 @@ Step by Step to implement:
 
 To use:
 1) Have a wall based on a sketch.
-2) Inside the sketch create a named constraint. The drawing direction is import as the endpoint denotes the start of the opening placement. The direction of the constraint denotes the direction of placement. The length of the constraint doesn't matter, only where the endpoint ends and the direction the sketch line makes. Make sure to toggle construction geometry, as nothing is build on this sketch line. It is just a means to denote a vector and its direction.
+2) Inside the sketch create a named constraint. The drawing direction is important as the endpoint denotes the start of the opening placement. The direction of the constraint denotes the direction of placement. The length of the constraint doesn't matter, only where the endpoint ends and the direction the sketch line makes. Make sure to toggle construction geometry, as nothing is build on this sketch line. It is just a means to denote a vector and its direction.
 3) Name the constraint , e.g. 'my_opening_1'
 4) Add the constraint to the spreadsheet and optionally enter the host object you think this opening belongs to.
 5) Move the sketch to the openings group
