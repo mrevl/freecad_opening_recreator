@@ -1,6 +1,6 @@
-# Window/Door recreation macro / python script by MrEvL
+# Window/Door recreation macro / python script by mrEvL
 # Take a look at accompanied window_demo.FCst file and read the README.MD
-# on 
+# See https://github.com/mrevl/freecad_opening_recreator
 
 import math
 import Draft
