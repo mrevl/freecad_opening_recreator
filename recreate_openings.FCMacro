@@ -6,8 +6,10 @@ import math
 import Draft
 import Arch
 
+debug = True
+
 def main():
-#    docname = 'window_demo'
+    #    docname = 'window_demo'
 #    doc = FreeCAD.getDocument(docname)
     doc = FreeCAD.activeDocument()
 
@@ -15,21 +17,21 @@ def main():
     sc = doc.getObjectsByLabel("sc_openings")
     if not sc:
         print("No spreadsheet called sc_openings found - bailing")
-        exit(1)
+        return
     sc = sc[0]
 
     # the group containing all the sketch objects referring to points
     op = doc.getObjectsByLabel('openings')
     if not op:
         print("No group called openings found - bailing")
-        exit(1)
+        return
     op = op[0]
 
     # the group with generated items
     gop = doc.getObjectsByLabel('generated_openings')
     if not gop:
         print("No group called generated_openings found - bailing")
-        exit(1)
+        return
     gop = gop[0]
 
     for sketch in op.OutList:
@@ -38,8 +40,9 @@ def main():
         for x in win:
             gop.addObject(x)
 
-    App.activeDocument().recompute(None,True,True)
-
+    #FIXME NativeIFC still complains, probably not triggering something in their codepath
+    doc.commitTransaction()
+    doc.recompute()
 
 def remove_generated(doc, label):
     # remove the previous window + underlying sketch and regenerate
@@ -109,7 +112,14 @@ def rebuild_opening(doc, sketch, sc):
             angle = math.degrees(math.atan(dy/dx))
         else:
             angle = 270
-        # print(str(angle))
+
+        angle = round(angle,0)
+        if angle < 0:
+            angle = 360 + angle
+        angle = abs(angle) # for -0.0, rounding error
+
+        if debug:
+            print(f'DEBUG: x1:{x1} x2:{x2} y1:{y1} y2:{y2} - Angle is at {str(angle)}')
 
         # FIXME - determine what the automatic values actually become
         # Rotate the opening over the normal (extrusion direction) of the wall. 
@@ -151,7 +161,7 @@ def rebuild_opening(doc, sketch, sc):
 
         print(f'Created: {win.Label}')
         gen_win.append(win)
-   
+
 
     if (not found_named_constraint):
         print(f'No named constraints found to work on in {sketch.Name}')
